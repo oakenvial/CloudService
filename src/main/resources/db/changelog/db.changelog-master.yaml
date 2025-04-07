@@ -1,0 +1,16 @@
+databaseChangeLog:
+  - include:
+      file: migrations/001-schema.sql
+      relativeToChangelogFile: true
+  - include:
+      file: migrations/002-user-schema.sql
+      relativeToChangelogFile: true
+  - include:
+      file: migrations/003-user-data.sql
+      relativeToChangelogFile: true
+  - include:
+      file: migrations/004-file-schema.sql
+      relativeToChangelogFile: true
+  - include:
+      file: migrations/005-token-schema.sql
+      relativeToChangelogFile: true
