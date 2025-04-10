@@ -7,6 +7,6 @@ import lombok.*;
 @AllArgsConstructor
 @EqualsAndHashCode
 @ToString
-public class LoginResponse {
+public class LoginResponseDto {
     private String authToken;
 }

@@ -33,6 +33,9 @@ public class FileEntity {
     @Column(name = "filesize_bytes", nullable = false)
     private Long filesizeBytes;
 
+    @Column(name = "hash")
+    private String hash;
+
     @Column(name = "s3_link", nullable = false)
     private String s3Link;
 

@@ -7,7 +7,7 @@ import lombok.*;
 @AllArgsConstructor
 @EqualsAndHashCode
 @ToString
-public class ErrorResponse {
-    private String message;
-    private Integer id;
+public class LoginRequestDto {
+    private String login;
+    private String password;
 }

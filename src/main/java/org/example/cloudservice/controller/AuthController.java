@@ -1,7 +1,7 @@
 package org.example.cloudservice.controller;
 
-import org.example.cloudservice.dto.LoginRequest;
-import org.example.cloudservice.dto.LoginResponse;
+import org.example.cloudservice.dto.LoginRequestDto;
+import org.example.cloudservice.dto.LoginResponseDto;
 import org.example.cloudservice.service.CustomUserDetailsService;
 import org.example.cloudservice.service.TokenService;
 import org.slf4j.Logger;
@@ -32,7 +32,7 @@ public class AuthController {
     }
 
     @PostMapping(value = "/login", consumes = "application/json", produces = "application/json")
-    public ResponseEntity<LoginResponse> login(@RequestBody @NonNull LoginRequest request) {
+    public ResponseEntity<LoginResponseDto> login(@RequestBody @NonNull LoginRequestDto request) {
         try {
             // Load the user details using the custom service
             UserDetails userDetails = customUserDetailsService.loadUserByUsername(request.getLogin());
@@ -41,7 +41,7 @@ public class AuthController {
             if (passwordEncoder.matches(request.getPassword(), userDetails.getPassword())) {
                 String token = tokenService.generateToken(request.getLogin());
                 logger.info("User '{}' logged in successfully", request.getLogin());
-                return ResponseEntity.ok(new LoginResponse(token));
+                return ResponseEntity.ok(new LoginResponseDto(token));
             } else {
                 logger.warn("Failed login attempt for user '{}'", request.getLogin());
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();

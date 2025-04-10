@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS cloud.files
     partial_filename TEXT,
     file_extension   TEXT,
     filesize_bytes   BIGINT      NOT NULL CHECK (filesize_bytes >= 0),
+    hash             TEXT        NOT NULL,
     s3_link          TEXT        NOT NULL,
     created_at       TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     deleted          BOOLEAN     NOT NULL DEFAULT FALSE,
