@@ -10,3 +10,6 @@ CREATE TABLE IF NOT EXISTS cloud.users
     last_name  TEXT,
     email      TEXT
 );
+
+CREATE INDEX idx_users_login ON cloud.users (login);
+CREATE INDEX idx_users_first_last ON cloud.users (first_name, last_name);

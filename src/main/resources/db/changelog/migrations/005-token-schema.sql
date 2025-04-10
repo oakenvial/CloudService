@@ -10,3 +10,5 @@ CREATE TABLE IF NOT EXISTS cloud.tokens
     revoked    BOOLEAN     NOT NULL DEFAULT FALSE,
     CONSTRAINT fk_tokens_user FOREIGN KEY (user_id) REFERENCES cloud.users (id)
 );
+
+CREATE INDEX idx_tokens_user_id ON cloud.tokens(user_id);

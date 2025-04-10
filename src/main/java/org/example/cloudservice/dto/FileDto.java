@@ -7,6 +7,7 @@ import lombok.*;
 @AllArgsConstructor
 @EqualsAndHashCode
 @ToString
-public class FileDeleteRequest {
-    private String name;
+public class FileDto {
+    private String filename;
+    private Integer size;
 }
