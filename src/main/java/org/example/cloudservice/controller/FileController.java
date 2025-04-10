@@ -2,23 +2,25 @@ package org.example.cloudservice.controller;
 
 import org.example.cloudservice.dto.ErrorResponseDto;
 import org.example.cloudservice.dto.FileDto;
+import org.example.cloudservice.dto.FilenameUpdateRequestDto;
 import org.example.cloudservice.service.FileService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.Resource;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.lang.NonNull;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.security.Principal;
 import java.util.List;
 
 @RestController
 public class FileController {
-
-    private static final Logger logger = LoggerFactory.getLogger(FileController.class);
 
     private final FileService fileService;
 
@@ -41,7 +43,6 @@ public class FileController {
             @RequestPart("hash") String hash,
             @NonNull Principal principal) {
         fileService.uploadFile(filename, file, hash, principal.getName());
-        logger.info("File '{}' uploaded successfully for user '{}'.", filename, principal.getName());
         return ResponseEntity.status(HttpStatus.OK).build();
     }
 
@@ -55,27 +56,25 @@ public class FileController {
     )
     public ResponseEntity<Void> deleteFile(
             @RequestParam("filename") String filename,
-            @NonNull Principal principal) {
+            @NonNull Principal principal) throws FileNotFoundException {
         fileService.deleteFile(filename, principal.getName());
-        logger.info("File '{}' deleted successfully for user '{}'.", filename, principal.getName());
         return ResponseEntity.ok().build();
     }
 
     /**
      * PUT /file?filename={filename}
-     * Edit file.
+     * Edit filename
      */
     @PutMapping(
             value = "/file",
             produces = "application/json",
-            consumes = "multipart/form-data"
+            consumes = "application/json"
     )
-    public ResponseEntity<ErrorResponseDto> updateFile(
+    public ResponseEntity<ErrorResponseDto> updateFilename(
             @RequestParam("filename") String filename,
-            @RequestPart("file") MultipartFile file,
-            @NonNull Principal principal) {
-        fileService.updateFile(filename, file, principal.getName());
-        logger.info("File '{}' updated successfully for user '{}'.", filename, principal.getName());
+            @RequestBody FilenameUpdateRequestDto filenameUpdateRequestDto,
+            @NonNull Principal principal) throws FileNotFoundException {
+        fileService.updateFilename(filename, filenameUpdateRequestDto, principal.getName());
         return ResponseEntity.ok().build();
     }
 
@@ -85,19 +84,23 @@ public class FileController {
      */
     @GetMapping(
             value = "/file",
-            produces = {"multipart/form-data", "application/json"}
+            produces = "multipart/form-data"
     )
-    public ResponseEntity<File> getFile(
+    public ResponseEntity<MultiValueMap<String, Object>> getFile(
             @RequestParam("filename") String filename,
-            @NonNull Principal principal) {
+            @NonNull Principal principal) throws FileNotFoundException {
         File file = fileService.getFile(filename, principal.getName());
-        if (file != null && file.exists()) {
-            logger.info("File '{}' retrieved successfully for user '{}'.", filename, principal.getName());
-            return ResponseEntity.ok(file);
-        } else {
-            logger.warn("File '{}' not found for user '{}'.", filename, principal.getName());
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
-        }
+        String fileHash = fileService.getFileHash(filename, principal.getName());
+
+        // Create a resource for the file binary.
+        Resource fileResource = new FileSystemResource(file);
+
+        // Build a multipart response that contains two parts: "hash" and "file".
+        MultiValueMap<String, Object> multipartBody = new LinkedMultiValueMap<>();
+        multipartBody.add("hash", fileHash);
+        multipartBody.add("file", fileResource);
+
+        return ResponseEntity.ok().body(multipartBody);
     }
 
     /**
@@ -112,9 +115,6 @@ public class FileController {
             @RequestParam("limit") Integer limit,
             @NonNull Principal principal) {
         List<FileDto> response = fileService.listFiles(limit, principal.getName());
-        logger.info("Retrieved {} files for user '{}'.",
-                response != null ? response.size() : 0,
-                principal.getName());
         return ResponseEntity.ok(response);
     }
 }

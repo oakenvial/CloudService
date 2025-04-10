@@ -6,6 +6,7 @@ import org.example.cloudservice.repository.TokenEntityRepository;
 import org.example.cloudservice.repository.UserEntityRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import java.time.Instant;
@@ -16,11 +17,13 @@ import java.util.UUID;
 @Service
 public class TokenService {
 
-    private static final long TOKEN_VALIDITY_SECONDS = 3600;
     private static final Logger logger = LoggerFactory.getLogger(TokenService.class);
 
     private final TokenEntityRepository tokenEntityRepository;
     private final UserEntityRepository userEntityRepository;
+
+    @Value("${app.auth.token.validity.seconds}")
+    private long tokenValiditySeconds;
 
     public TokenService(TokenEntityRepository tokenEntityRepository,
                         UserEntityRepository userEntityRepository) {
@@ -29,42 +32,37 @@ public class TokenService {
     }
 
     public String generateToken(String username) {
-        Optional<UserEntity> userEntityOpt = userEntityRepository.findByLogin(username);
-        if (userEntityOpt.isPresent()) {
-            final String token = UUID.randomUUID().toString();
-            final Instant issuedAt = Instant.now();
-            final Instant expiresAt = issuedAt.plus(TOKEN_VALIDITY_SECONDS, ChronoUnit.SECONDS);
-
-            TokenEntity tokenEntity = TokenEntity.builder()
-                    .token(token)
-                    .user(userEntityOpt.get())
-                    .issuedAt(issuedAt)
-                    .expiresAt(expiresAt)
-                    .revoked(false)
-                    .build();
-            tokenEntityRepository.save(tokenEntity);
-            logger.debug("Generated token for user {}: expires at {}", username, expiresAt);
-            return token;
-        } else {
-            logger.error("Error while generating token: couldn't find user {}", username);
-            throw new UsernameNotFoundException("User not found with login: " + username);
-        }
+        UserEntity userEntity = userEntityRepository.findByUsername(username)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found with username: " + username));
+        final String token = UUID.randomUUID().toString();
+        final Instant issuedAt = Instant.now();
+        final Instant expiresAt = issuedAt.plus(tokenValiditySeconds, ChronoUnit.SECONDS);
+        TokenEntity tokenEntity = TokenEntity.builder()
+                .token(token)
+                .user(userEntity)
+                .issuedAt(issuedAt)
+                .expiresAt(expiresAt)
+                .revoked(false)
+                .build();
+        tokenEntityRepository.save(tokenEntity);
+        logger.info("Generated token for user {}: expires at {}", username, expiresAt);
+        return token;
     }
 
     public boolean validateToken(String token) {
         Optional<TokenEntity> tokenEntityOpt = tokenEntityRepository.findByToken(token);
         if (tokenEntityOpt.isEmpty()) {
-            logger.debug("Token not found: {}", token);
+            logger.warn("Token not found: {}", token);
             return false;
         }
 
         TokenEntity tokenEntity = tokenEntityOpt.get();
         if (Instant.now().isAfter(tokenEntity.getExpiresAt())) {
-            logger.debug("Token expired for user {}: {}", tokenEntity.getUser().getLogin(), token);
+            logger.warn("Token expired for user {}: {}", tokenEntity.getUser().getUsername(), token);
             return false;
         }
         if (tokenEntity.isRevoked()) {
-            logger.debug("Token is revoked for user {}: {}", tokenEntity.getUser().getLogin(), token);
+            logger.warn("Token is revoked for user {}: {}", tokenEntity.getUser().getUsername(), token);
             return false;
         }
         return true;
@@ -73,22 +71,18 @@ public class TokenService {
     public void invalidateToken(String token) {
         Optional<TokenEntity> tokenEntityOpt = tokenEntityRepository.findByToken(token);
         if (tokenEntityOpt.isEmpty()) {
-            logger.debug("Token not found: {}", token);
+            logger.warn("Token not found: {}", token);
         } else {
             TokenEntity tokenEntity = tokenEntityOpt.get();
             tokenEntity.setRevoked(true);
             tokenEntityRepository.save(tokenEntity);
-            logger.debug("Token invalidated: {}", token);
+            logger.info("Token invalidated: {}", token);
         }
     }
 
-    public String getLoginFromToken(String token) {
-        Optional<TokenEntity> tokenEntityOpt = tokenEntityRepository.findByToken(token);
-        if (tokenEntityOpt.isPresent()) {
-            return tokenEntityOpt.get().getUser().getLogin();
-        } else {
-            logger.error("Error while getting login from token: {}", token);
-            throw new UsernameNotFoundException("User not found with token: " + token);
-        }
+    public String getUsernameFromToken(String token) {
+        TokenEntity tokenEntity = tokenEntityRepository.findByToken(token)
+                .orElseThrow(() -> new RuntimeException("Token not found in the storage: " + token));
+        return tokenEntity.getUser().getUsername();
     }
 }

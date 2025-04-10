@@ -3,6 +3,7 @@ package org.example.cloudservice.util;
 import java.util.concurrent.ThreadLocalRandom;
 
 public class RandomIdGenerator {
+
     private RandomIdGenerator() {
         // Private constructor to prevent instantiation
     }

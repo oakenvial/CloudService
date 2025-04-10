@@ -55,7 +55,6 @@ public class AuthController {
     @PostMapping("/logout")
     public ResponseEntity<Void> logout(
             @NonNull @RequestHeader("${app.auth.token.header:auth-token}") String authToken) {
-        logger.debug("Invalidation request received: {}", authToken);
         tokenService.invalidateToken(authToken);
         return ResponseEntity.ok().build();
     }

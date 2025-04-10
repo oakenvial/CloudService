@@ -7,7 +7,6 @@ import lombok.*;
 @AllArgsConstructor
 @EqualsAndHashCode
 @ToString
-public class FileDto {
-    private String filename;
-    private Long size;
+public class FilenameUpdateRequestDto {
+    private String name;
 }

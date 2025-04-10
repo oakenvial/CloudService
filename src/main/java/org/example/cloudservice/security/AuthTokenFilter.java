@@ -22,6 +22,7 @@ import java.util.List;
 public class AuthTokenFilter extends OncePerRequestFilter {
 
     private static final Logger logger = LoggerFactory.getLogger(AuthTokenFilter.class);
+
     @Value("${app.auth.token.header:auth-token}")
     private String authTokenHeader;
     private final TokenService tokenService;
@@ -43,11 +44,11 @@ public class AuthTokenFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
         String token = request.getHeader(authTokenHeader);
         if (token != null && tokenService.validateToken(token)) {
-            String login = tokenService.getLoginFromToken(token);
-            logger.debug("Token valid for user: {}", login);
+            String username = tokenService.getUsernameFromToken(token);
+            logger.info("Token valid for user: {}", username);
 
             UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
-                    login,
+                    username,
                     null,
                     List.of(new SimpleGrantedAuthority("ROLE_USER"))
             );
@@ -55,9 +56,9 @@ public class AuthTokenFilter extends OncePerRequestFilter {
             SecurityContextHolder.getContext().setAuthentication(authentication);
         } else {
             if (token == null) {
-                logger.debug("No auth-token header found.");
+                logger.error("No auth-token header found.");
             } else {
-                logger.warn("Invalid token provided.");
+                logger.error("Invalid token provided.");
             }
             // Clear any existing authentication context
             SecurityContextHolder.clearContext();

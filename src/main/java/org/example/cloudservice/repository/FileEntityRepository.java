@@ -3,18 +3,14 @@ package org.example.cloudservice.repository;
 import org.example.cloudservice.entity.FileEntity;
 import org.example.cloudservice.entity.UserEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.domain.Pageable;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface FileEntityRepository extends JpaRepository<FileEntity, Integer> {
 
-    List<FileEntity> findByUser(UserEntity user);
+    Optional<FileEntity> findByUserAndFilenameAndDeletedFalse(UserEntity user, String filename);
 
-    List<FileEntity> findByUserId(Integer userId);
-
-    List<FileEntity> findByFullFilenameContaining(String searchKeyword);
-
-    List<FileEntity> findByPartialFilenameContaining(String searchKeyword);
-
-    List<FileEntity> findByUserAndDeletedFalse(UserEntity user);
+    List<FileEntity> findAllByUserAndDeletedFalse(UserEntity userEntity, Pageable pageable);
 }

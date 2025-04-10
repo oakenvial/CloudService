@@ -21,14 +21,8 @@ public class FileEntity {
     @JoinColumn(name = "user_id", nullable = false)
     private UserEntity user;
 
-    @Column(name = "full_filename", nullable = false)
-    private String fullFilename;
-
-    @Column(name = "partial_filename")
-    private String partialFilename;
-
-    @Column(name = "file_extension")
-    private String fileExtension;
+    @Column(name = "filename", nullable = false)
+    private String filename;
 
     @Column(name = "filesize_bytes", nullable = false)
     private Long filesizeBytes;

@@ -14,6 +14,8 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.BindException;
 import jakarta.validation.ConstraintViolationException;
 
+import java.io.FileNotFoundException;
+
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
@@ -30,10 +32,23 @@ public class GlobalExceptionHandler {
             ConstraintViolationException.class
     })
     public ResponseEntity<ErrorResponseDto> handleBadRequestExceptions(Exception e) {
-        String message = "Invalid request: " + e.getMessage();
         logger.error("Bad Request encountered: {}", e.getMessage(), e);
         int errorId = RandomIdGenerator.generateRandomId();
-        ErrorResponseDto errorResponse = new ErrorResponseDto(message, errorId);
+        ErrorResponseDto errorResponse = new ErrorResponseDto(e.getMessage(), errorId);
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
+    }
+
+    @ExceptionHandler(FileNotFoundException.class)
+    public ResponseEntity<Void> handleFileNotFoundException(FileNotFoundException e) {
+        logger.error("File not found: {}", e.getMessage(), e);
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+    }
+
+    @ExceptionHandler(RuntimeException.class)
+    public ResponseEntity<ErrorResponseDto> handleOtherException(Exception e) {
+        logger.error("Error encountered: {}", e.getMessage(), e);
+        int errorId = RandomIdGenerator.generateRandomId();
+        ErrorResponseDto errorResponse = new ErrorResponseDto(e.getMessage(), errorId);
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
     }
 }

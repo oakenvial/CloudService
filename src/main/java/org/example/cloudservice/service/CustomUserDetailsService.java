@@ -1,6 +1,5 @@
 package org.example.cloudservice.service;
 
-import java.util.Optional;
 import org.example.cloudservice.entity.UserEntity;
 import org.example.cloudservice.repository.UserEntityRepository;
 import org.slf4j.Logger;
@@ -16,6 +15,7 @@ import org.springframework.stereotype.Service;
 public class CustomUserDetailsService implements UserDetailsService {
 
     private static final Logger logger = LoggerFactory.getLogger(CustomUserDetailsService.class);
+
     private final UserEntityRepository userEntityRepository;
 
     public CustomUserDetailsService(final UserEntityRepository userEntityRepository) {
@@ -24,18 +24,14 @@ public class CustomUserDetailsService implements UserDetailsService {
 
     @Override
     public UserDetails loadUserByUsername(@NonNull String username) throws UsernameNotFoundException {
-        Optional<UserEntity> userOpt = userEntityRepository.findByLogin(username);
-        if (userOpt.isEmpty()) {
-            logger.error("User not found with login: {}", username);
-            throw new UsernameNotFoundException("User not found with login: " + username);
-        }
-        UserEntity userEntity = userOpt.get();
+        UserEntity userEntity = userEntityRepository.findByUsername(username)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found with username: " + username));
         logger.debug("User {} found, loading details", username);
 
         // Mapping of UserEntity to Spring Security's User.
         // The password stored in UserEntity is encoded
         return User.builder()
-                .username(userEntity.getLogin())
+                .username(userEntity.getUsername())
                 .password(userEntity.getPassword())
                 .authorities("ROLE_USER")
                 .build();
