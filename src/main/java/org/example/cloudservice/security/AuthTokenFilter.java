@@ -4,6 +4,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.lang.NonNull;
 import org.example.cloudservice.service.TokenService;
 import org.slf4j.Logger;
@@ -21,7 +22,8 @@ import java.util.List;
 public class AuthTokenFilter extends OncePerRequestFilter {
 
     private static final Logger logger = LoggerFactory.getLogger(AuthTokenFilter.class);
-    private static final String AUTH_TOKEN_HEADER = "auth-token";
+    @Value("${app.auth.token.header:auth-token}")
+    private String authTokenHeader;
     private final TokenService tokenService;
 
     public AuthTokenFilter(TokenService tokenService) {
@@ -39,7 +41,7 @@ public class AuthTokenFilter extends OncePerRequestFilter {
                                     @NonNull HttpServletResponse response,
                                     @NonNull FilterChain filterChain)
             throws ServletException, IOException {
-        String token = request.getHeader(AUTH_TOKEN_HEADER);
+        String token = request.getHeader(authTokenHeader);
         if (token != null && tokenService.validateToken(token)) {
             String login = tokenService.getLoginFromToken(token);
             logger.debug("Token valid for user: {}", login);
