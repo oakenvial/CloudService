@@ -1,5 +1,7 @@
 package org.example.cloudservice.controller;
 
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 import org.example.cloudservice.dto.ErrorResponseDto;
 import org.example.cloudservice.dto.FileDto;
 import org.example.cloudservice.dto.FilenameUpdateRequestDto;
@@ -11,6 +13,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.lang.NonNull;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -20,6 +23,7 @@ import java.security.Principal;
 import java.util.List;
 
 @RestController
+@Validated
 public class FileController {
 
     private final FileService fileService;
@@ -31,6 +35,12 @@ public class FileController {
     /**
      * POST /file
      * Uploads a file via multipart/form-data.
+     *
+     * @param filename the name of the file; must not be null.
+     * @param file the multipart file payload; validated and must not be null.
+     * @param hash the file hash.
+     * @param principal the authenticated principal; must not be null.
+     * @return HTTP 200 OK if successful.
      */
     @PostMapping(
             value = "/file",
@@ -38,9 +48,9 @@ public class FileController {
             consumes = "multipart/form-data"
     )
     public ResponseEntity<Void> uploadFile(
-            @RequestParam("filename") String filename,
-            @RequestPart("file") MultipartFile file,
-            @RequestPart("hash") String hash,
+            @NotNull @RequestParam("filename") String filename,
+            @NotNull @Valid @RequestPart("file") MultipartFile file,
+            @NotNull @RequestPart("hash") String hash,
             @NonNull Principal principal) {
         fileService.uploadFile(filename, file, hash, principal.getName());
         return ResponseEntity.status(HttpStatus.OK).build();
@@ -49,13 +59,18 @@ public class FileController {
     /**
      * DELETE /file?filename={filename}
      * Deletes the specified file.
+     *
+     * @param filename the name of the file to delete.
+     * @param principal the authenticated principal; must not be null.
+     * @return HTTP 200 OK if deletion is successful.
+     * @throws FileNotFoundException if the file is not found.
      */
     @DeleteMapping(
             value = "/file",
             produces = "application/json"
     )
     public ResponseEntity<Void> deleteFile(
-            @RequestParam("filename") String filename,
+            @NotNull @RequestParam("filename") String filename,
             @NonNull Principal principal) throws FileNotFoundException {
         fileService.deleteFile(filename, principal.getName());
         return ResponseEntity.ok().build();
@@ -63,7 +78,13 @@ public class FileController {
 
     /**
      * PUT /file?filename={filename}
-     * Edit filename
+     * Edits the filename.
+     *
+     * @param filename the current filename.
+     * @param filenameUpdateRequestDto DTO containing the new filename; validated.
+     * @param principal the authenticated principal; must not be null.
+     * @return HTTP 200 OK if the update is successful.
+     * @throws FileNotFoundException if the file is not found.
      */
     @PutMapping(
             value = "/file",
@@ -71,8 +92,8 @@ public class FileController {
             consumes = "application/json"
     )
     public ResponseEntity<ErrorResponseDto> updateFilename(
-            @RequestParam("filename") String filename,
-            @RequestBody FilenameUpdateRequestDto filenameUpdateRequestDto,
+            @NotNull @RequestParam("filename") String filename,
+            @Valid @RequestBody FilenameUpdateRequestDto filenameUpdateRequestDto,
             @NonNull Principal principal) throws FileNotFoundException {
         fileService.updateFilename(filename, filenameUpdateRequestDto, principal.getName());
         return ResponseEntity.ok().build();
@@ -80,14 +101,19 @@ public class FileController {
 
     /**
      * GET /file?filename={filename}
-     * Retrieves the specified file.
+     * Retrieves the specified file along with its hash in a multipart/form-data response.
+     *
+     * @param filename the name of the file to retrieve.
+     * @param principal the authenticated principal; must not be null.
+     * @return a multipart response with a "hash" and a "file" part.
+     * @throws FileNotFoundException if the file is not found.
      */
     @GetMapping(
             value = "/file",
             produces = "multipart/form-data"
     )
     public ResponseEntity<MultiValueMap<String, Object>> getFile(
-            @RequestParam("filename") String filename,
+            @NotNull @RequestParam("filename") String filename,
             @NonNull Principal principal) throws FileNotFoundException {
         File file = fileService.getFile(filename, principal.getName());
         String fileHash = fileService.getFileHash(filename, principal.getName());
@@ -106,13 +132,17 @@ public class FileController {
     /**
      * GET /list?limit={limit}
      * Retrieves a list of files, limited by the specified parameter.
+     *
+     * @param limit the maximum number of files to return.
+     * @param principal the authenticated principal; must not be null.
+     * @return a JSON response with a list of file DTOs.
      */
     @GetMapping(
             value = "/list",
             produces = "application/json"
     )
     public ResponseEntity<List<FileDto>> listFiles(
-            @RequestParam("limit") Integer limit,
+            @NotNull @RequestParam("limit") Integer limit,
             @NonNull Principal principal) {
         List<FileDto> response = fileService.listFiles(limit, principal.getName());
         return ResponseEntity.ok(response);

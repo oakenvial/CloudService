@@ -1,5 +1,7 @@
 package org.example.cloudservice.controller;
 
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 import org.example.cloudservice.dto.LoginRequestDto;
 import org.example.cloudservice.dto.LoginResponseDto;
 import org.example.cloudservice.service.CustomUserDetailsService;
@@ -8,13 +10,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.lang.NonNull;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
+@Validated
 public class AuthController {
 
     private static final Logger logger = LoggerFactory.getLogger(AuthController.class);
@@ -31,8 +34,14 @@ public class AuthController {
         this.passwordEncoder = passwordEncoder;
     }
 
+    /**
+     * Authenticates a user based on the supplied credentials and returns a token upon success.
+     *
+     * @param request the login request containing username and password; must not be null and is validated.
+     * @return a ResponseEntity containing the token as a LoginResponseDto if authentication is successful, or an unauthorized status otherwise.
+     */
     @PostMapping(value = "/login", consumes = "application/json", produces = "application/json")
-    public ResponseEntity<LoginResponseDto> login(@RequestBody @NonNull LoginRequestDto request) {
+    public ResponseEntity<LoginResponseDto> login(@RequestBody @Valid @NotNull LoginRequestDto request) {
         try {
             // Load the user details using the custom service
             UserDetails userDetails = customUserDetailsService.loadUserByUsername(request.getLogin());
@@ -52,9 +61,15 @@ public class AuthController {
         }
     }
 
+    /**
+     * Logs out the user by invalidating the authentication token.
+     *
+     * @param authToken the authentication token provided in the request header; must not be null.
+     * @return a ResponseEntity with HTTP 200 OK status if logout is successful.
+     */
     @PostMapping("/logout")
     public ResponseEntity<Void> logout(
-            @NonNull @RequestHeader("${app.auth.token.header:auth-token}") String authToken) {
+            @NotNull @RequestHeader("${app.auth.token.header:auth-token}") String authToken) {
         tokenService.invalidateToken(authToken);
         return ResponseEntity.ok().build();
     }
