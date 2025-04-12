@@ -1,5 +1,7 @@
 package org.example.cloudservice.service;
 
+import lombok.Getter;
+import lombok.Setter;
 import org.example.cloudservice.entity.TokenEntity;
 import org.example.cloudservice.entity.UserEntity;
 import org.example.cloudservice.repository.TokenEntityRepository;
@@ -23,6 +25,8 @@ public class TokenService {
     private final UserEntityRepository userEntityRepository;
 
     @Value("${app.auth.token.validity.seconds}")
+    @Setter
+    @Getter
     private long tokenValiditySeconds;
 
     public TokenService(TokenEntityRepository tokenEntityRepository,
