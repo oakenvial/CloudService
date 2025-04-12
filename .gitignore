@@ -38,4 +38,5 @@ out/
 
 
 ### Custom ###
-*.log
+logs/*.log
+logs/*.gz
