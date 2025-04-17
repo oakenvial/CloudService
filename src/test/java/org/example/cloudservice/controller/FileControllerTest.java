@@ -7,6 +7,7 @@ import java.io.File;
 import java.security.Principal;
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Stream;
 
 import org.example.cloudservice.dto.ErrorResponseDto;
 import org.example.cloudservice.dto.FileDto;
@@ -15,6 +16,9 @@ import org.example.cloudservice.service.FileService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -81,6 +85,7 @@ class FileControllerTest {
         // Assert
         verify(fileService, times(1)).updateFilename("test.txt", updateDto, "testUser");
         assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertNull(response.getBody(), "Success response should have null body");
     }
 
     @Test
@@ -125,5 +130,29 @@ class FileControllerTest {
         verify(fileService, times(1)).listFiles(10, "testUser");
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertEquals(fileDtos, response.getBody());
+    }
+
+    private static Stream<Arguments> provideFileListLimits() {
+        return Stream.of(
+            Arguments.of(5, Arrays.asList(new FileDto("file1.txt", 100L))),
+            Arguments.of(10, Arrays.asList(new FileDto("file1.txt", 100L), new FileDto("file2.txt", 200L))),
+            Arguments.of(20, Arrays.asList(new FileDto("file1.txt", 100L), new FileDto("file2.txt", 200L), new FileDto("file3.txt", 300L)))
+        );
+    }
+
+    @ParameterizedTest
+    @MethodSource("provideFileListLimits")
+    void listFiles_withDifferentLimits_returnsCorrectNumberOfFiles(int limit, List<FileDto> expectedFiles) {
+        // Arrange
+        when(fileService.listFiles(limit, "testUser")).thenReturn(expectedFiles);
+
+        // Act
+        ResponseEntity<List<FileDto>> response = fileController.listFiles(limit, principal);
+
+        // Assert
+        verify(fileService, times(1)).listFiles(limit, "testUser");
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals(expectedFiles, response.getBody());
+        assertEquals(expectedFiles.size(), response.getBody().size());
     }
 }

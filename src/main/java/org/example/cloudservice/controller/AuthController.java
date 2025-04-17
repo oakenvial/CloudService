@@ -70,6 +70,9 @@ public class AuthController {
     @PostMapping("/logout")
     public ResponseEntity<Void> logout(
             @NotNull @RequestHeader("${app.auth.token.header:auth-token}") String authToken) {
+        if (authToken.startsWith("Bearer ")) {
+            authToken = authToken.substring(7); // Remove "Bearer " prefix
+        }
         tokenService.invalidateToken(authToken);
         return ResponseEntity.ok().build();
     }

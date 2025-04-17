@@ -4,11 +4,11 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.lang.NonNull;
 import org.example.cloudservice.service.TokenService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -23,8 +23,12 @@ public class AuthTokenFilter extends OncePerRequestFilter {
 
     private static final Logger logger = LoggerFactory.getLogger(AuthTokenFilter.class);
 
+    private static final String BEARER_PREFIX = "Bearer ";
+    private static final String USER_ROLE     = "ROLE_USER";
+
     @Value("${app.auth.token.header:auth-token}")
     private String authTokenHeader;
+
     private final TokenService tokenService;
 
     public AuthTokenFilter(TokenService tokenService) {
@@ -32,9 +36,9 @@ public class AuthTokenFilter extends OncePerRequestFilter {
     }
 
     @Override
-    protected boolean shouldNotFilter(HttpServletRequest request) {
-        // Skip token validation for /login endpoint
-        return "/login".equals(request.getServletPath());
+    protected boolean shouldNotFilter(@NonNull HttpServletRequest request) {
+        // Exclude login endpoint
+        return request.getServletPath().equals("/login");
     }
 
     @Override
@@ -42,30 +46,40 @@ public class AuthTokenFilter extends OncePerRequestFilter {
                                     @NonNull HttpServletResponse response,
                                     @NonNull FilterChain filterChain)
             throws ServletException, IOException {
-        String token = request.getHeader(authTokenHeader);
-        if (token != null && tokenService.validateToken(token)) {
-            String username = tokenService.getUsernameFromToken(token);
-            logger.info("Token valid for user: {}", username);
 
-            UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
-                    username,
-                    null,
-                    List.of(new SimpleGrantedAuthority("ROLE_USER"))
-            );
-
-            SecurityContextHolder.getContext().setAuthentication(authentication);
-        } else {
-            if (token == null) {
-                logger.error("No auth-token header found.");
-            } else {
-                logger.error("Invalid token provided.");
-            }
-            // Clear any existing authentication context
-            SecurityContextHolder.clearContext();
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            return; // End filter chain here as authentication failed
+        String header = request.getHeader(authTokenHeader);
+        if (header == null || !header.startsWith(BEARER_PREFIX)) {
+            logger.debug("Missing or malformed '{}' header for request to {}", authTokenHeader, request.getRequestURI());
+            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Missing or invalid authorization header");
+            return;
         }
 
+        String token = header.substring(BEARER_PREFIX.length());
+        try {
+            if (!tokenService.validateToken(token)) {
+                logger.warn("Invalid token provided for request to {}", request.getRequestURI());
+                response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid token");
+                return;
+            }
+
+            String username = tokenService.getUsernameFromToken(token);
+            logger.debug("Token valid, authenticated user: {}", username);
+
+            var authentication = new UsernamePasswordAuthenticationToken(
+                    username,
+                    null,
+                    List.of(new SimpleGrantedAuthority(USER_ROLE))
+            );
+            SecurityContextHolder.getContext().setAuthentication(authentication);
+
+        } catch (Exception ex) {
+            logger.error("Error while validating token for request to {}", request.getRequestURI(), ex);
+            SecurityContextHolder.clearContext();
+            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Token processing error");
+            return;
+        }
+
+        // Continue down the filter chain
         filterChain.doFilter(request, response);
     }
 }

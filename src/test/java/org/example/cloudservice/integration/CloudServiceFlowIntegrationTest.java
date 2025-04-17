@@ -57,7 +57,7 @@ class CloudServiceFlowIntegrationTest extends AbstractIntegrationTest {
         String token = login.getBody().getAuthToken();
 
         headers = new HttpHeaders();
-        headers.set("auth-token", token);
+        headers.set("auth-token", "Bearer " + token);
     }
 
     @Test

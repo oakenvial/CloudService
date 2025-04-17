@@ -94,13 +94,14 @@ class AuthControllerTest {
     @Test
     void logout_invokesInvalidateToken_andReturnsOk() {
         // Arrange
-        String authToken = "auth-token-value";
+        String token = "auth-token-value";
+        String bearerToken = "Bearer " + token;
 
         // Act
-        ResponseEntity<Void> response = authController.logout(authToken);
+        ResponseEntity<Void> response = authController.logout(bearerToken);
 
         // Assert
-        verify(tokenService).invalidateToken(authToken);
+        verify(tokenService).invalidateToken(token);
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
     }
 }
