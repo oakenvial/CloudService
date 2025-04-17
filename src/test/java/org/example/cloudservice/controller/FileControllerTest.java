@@ -3,9 +3,7 @@ package org.example.cloudservice.controller;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
-import java.io.ByteArrayInputStream;
 import java.io.File;
-import java.io.IOException;
 import java.security.Principal;
 import java.util.Arrays;
 import java.util.List;
@@ -45,7 +43,7 @@ class FileControllerTest {
     }
 
     @Test
-    void uploadFile_returnsOk() throws IOException {
+    void uploadFile_returnsOk() {
         // Arrange
         // Create a mock MultipartFile.
         MultipartFile file = mock(MultipartFile.class);
