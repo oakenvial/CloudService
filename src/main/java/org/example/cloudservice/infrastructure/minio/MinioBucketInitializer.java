@@ -19,10 +19,10 @@ public class MinioBucketInitializer {
     @Value("${minio.endpoint}")
     private String endpoint;
 
-    @Value("${minio.accessKey}")
+    @Value("${minio.access-key}")
     private String accessKey;
 
-    @Value("${minio.secretKey}")
+    @Value("${minio.secret-key}")
     private String secretKey;
 
     @Value("${minio.bucket}")

@@ -71,7 +71,20 @@ The API is documented in the OpenAPI specification file:
 You can import this file into tools like [Swagger UI](https://swagger.io/tools/swagger-ui/), [Postman](https://www.postman.com/), or [Insomnia](https://insomnia.rest/) to explore and test the endpoints interactively.
 
 ## Testing
-TODO
+- Unit tests for controllers, services, security filters, aspects.
+
+- Integration tests with Testcontainers (Postgres + MinIO).
+
+- A full happy‑path flow in CloudServiceFlowIntegrationTest.
+
+## Local Testing
+
+Use the following seeded users for manual testing against http://localhost:8099/cloud (all passwords are 'password'):
+- jdoe
+- asmith
+- bjones
+- slee  
+- kmiller
 
 ## License
 

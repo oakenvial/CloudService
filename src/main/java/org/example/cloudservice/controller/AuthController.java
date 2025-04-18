@@ -56,7 +56,7 @@ public class AuthController {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
             }
         } catch (UsernameNotFoundException ex) {
-            logger.warn("Failed login attempt for user '{}'", request.getLogin());
+            logger.warn("Failed login attempt for user '{}', username not found", request.getLogin());
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
     }

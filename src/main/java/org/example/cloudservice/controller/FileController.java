@@ -38,7 +38,7 @@ public class FileController {
      *
      * @param filename  the name of the file; must not be null.
      * @param file      the multipart file payload; must not be null.
-     * @param hash      the file hash; optional. If omitted, service may compute or ignore it.
+     * @param hash      the file hash; optional. If omitted, the service may compute or ignore it.
      * @param principal the authenticated principal; must not be null.
      * @return HTTP 200 OK if successful.
      */

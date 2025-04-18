@@ -75,7 +75,7 @@ public class TokenService {
     public void invalidateToken(String token) {
         Optional<TokenEntity> tokenEntityOpt = tokenEntityRepository.findByToken(token);
         if (tokenEntityOpt.isEmpty()) {
-            logger.warn("Token not found: {}", token);
+            logger.warn("Token for invalidation not found: {}", token);
         } else {
             TokenEntity tokenEntity = tokenEntityOpt.get();
             tokenEntity.setRevoked(true);
