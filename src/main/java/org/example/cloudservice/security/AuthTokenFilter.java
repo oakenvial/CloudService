@@ -1,7 +1,6 @@
 package org.example.cloudservice.security;
 
 import jakarta.servlet.FilterChain;
-import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.example.cloudservice.service.TokenService;
@@ -9,77 +8,77 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.lang.NonNull;
+import org.springframework.stereotype.Component;
+import org.springframework.web.filter.OncePerRequestFilter;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.stereotype.Component;
-import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import java.util.List;
+import java.util.Collections;
 
 @Component
 public class AuthTokenFilter extends OncePerRequestFilter {
-
     private static final Logger logger = LoggerFactory.getLogger(AuthTokenFilter.class);
 
-    private static final String BEARER_PREFIX = "Bearer ";
-    private static final String USER_ROLE     = "ROLE_USER";
+    private final TokenService tokenService;
 
-    @Value("${app.auth.token.header:auth-token}")
+    @Value("${app.auth.token-header:Auth-Token}")
     private String authTokenHeader;
 
-    private final TokenService tokenService;
+    @Value("${app.auth.token-prefix:Bearer }")
+    private String tokenPrefix;
+
+    @Value("${app.auth.login-path:/login}")
+    private String loginPath;
+
+    @Value("${app.auth.user-role:ROLE_USER}")
+    private String userRole;
 
     public AuthTokenFilter(TokenService tokenService) {
         this.tokenService = tokenService;
     }
 
     @Override
-    protected boolean shouldNotFilter(@NonNull HttpServletRequest request) {
-        // Exclude login endpoint
-        return request.getServletPath().equals("/login");
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        return loginPath.equals(request.getServletPath());
     }
 
     @Override
-    protected void doFilterInternal(@NonNull HttpServletRequest request,
-                                    @NonNull HttpServletResponse response,
-                                    @NonNull FilterChain filterChain)
-            throws ServletException, IOException {
+    protected void doFilterInternal(HttpServletRequest req,
+                                    @NonNull HttpServletResponse res,
+                                    @NonNull FilterChain chain) throws IOException {
 
-        String header = request.getHeader(authTokenHeader);
-        if (header == null || !header.startsWith(BEARER_PREFIX)) {
-            logger.debug("Missing or malformed '{}' header for request to {}", authTokenHeader, request.getRequestURI());
-            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Missing or invalid authorization header");
+        String header = req.getHeader(authTokenHeader);
+        if (header == null || !header.startsWith(tokenPrefix)) {
+            logger.debug("Missing or malformed '{}' header on {}", authTokenHeader, req.getRequestURI());
+            res.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Missing or invalid authorization header");
             return;
         }
 
-        String token = header.substring(BEARER_PREFIX.length());
+        String token = header.substring(tokenPrefix.length());
         try {
             if (!tokenService.validateToken(token)) {
-                logger.warn("Invalid token provided for request to {}", request.getRequestURI());
-                response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid token");
+                logger.warn("Invalid token on {}", req.getRequestURI());
+                res.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid token");
                 return;
             }
 
             String username = tokenService.getUsernameFromToken(token);
-            logger.debug("Token valid, authenticated user: {}", username);
+            logger.debug("Authenticated user '{}'", username);
 
-            var authentication = new UsernamePasswordAuthenticationToken(
+            var auth = new UsernamePasswordAuthenticationToken(
                     username,
                     null,
-                    List.of(new SimpleGrantedAuthority(USER_ROLE))
+                    Collections.singletonList(new SimpleGrantedAuthority(userRole))
             );
-            SecurityContextHolder.getContext().setAuthentication(authentication);
+            SecurityContextHolder.getContext().setAuthentication(auth);
 
+            chain.doFilter(req, res);
         } catch (Exception ex) {
-            logger.error("Error while validating token for request to {}", request.getRequestURI(), ex);
+            logger.error("Error validating token on {}", req.getRequestURI(), ex);
             SecurityContextHolder.clearContext();
-            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Token processing error");
-            return;
+            res.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Token processing error");
         }
-
-        // Continue down the filter chain
-        filterChain.doFilter(request, response);
     }
 }

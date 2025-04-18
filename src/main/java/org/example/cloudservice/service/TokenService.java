@@ -24,7 +24,7 @@ public class TokenService {
     private final TokenEntityRepository tokenEntityRepository;
     private final UserEntityRepository userEntityRepository;
 
-    @Value("${app.auth.token.validity.seconds}")
+    @Value("${app.auth.token-validity-seconds}")
     @Setter
     @Getter
     private long tokenValiditySeconds;

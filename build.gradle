@@ -34,6 +34,8 @@ dependencies {
     implementation("io.minio:minio:8.5.17")
 
     compileOnly 'org.projectlombok:lombok'
+    compileOnly "org.springframework.boot:spring-boot-configuration-processor"
+
     runtimeOnly 'org.postgresql:postgresql'
     annotationProcessor 'org.projectlombok:lombok'
 

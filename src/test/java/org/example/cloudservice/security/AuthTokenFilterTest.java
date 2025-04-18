@@ -1,22 +1,29 @@
 package org.example.cloudservice.security;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+
 import org.example.cloudservice.service.TokenService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.io.IOException;
 
+@ExtendWith(MockitoExtension.class)
 class AuthTokenFilterTest {
 
     @Mock
@@ -29,85 +36,102 @@ class AuthTokenFilterTest {
     private HttpServletResponse response;
 
     @Mock
-    private FilterChain filterChain;
+    private FilterChain chain;
 
-    private AuthTokenFilter authTokenFilter;
+    @InjectMocks
+    private AuthTokenFilter filter;
 
     @BeforeEach
     void setUp() {
-        MockitoAnnotations.openMocks(this);
-        authTokenFilter = new AuthTokenFilter(tokenService);
-        // Manually set the authTokenHeader to the expected value.
-        ReflectionTestUtils.setField(authTokenFilter, "authTokenHeader", "auth-token");
-        // Clear security context before each test to ensure the clean state
+        // configure all four @Value fields
+        ReflectionTestUtils.setField(filter, "authTokenHeader", "Auth-Token");
+        ReflectionTestUtils.setField(filter, "tokenPrefix", "Bearer ");
+        ReflectionTestUtils.setField(filter, "loginPath", "/login");
+        ReflectionTestUtils.setField(filter, "userRole", "ROLE_USER");
         SecurityContextHolder.clearContext();
     }
 
     @Test
-    void doFilterInternal_validToken_setsAuthentication() throws ServletException, IOException {
-        // Arrange: simulate a valid token provided in the header.
-        String token = "valid-token";
-        String bearerToken = "Bearer " + token;
-        String username = "user1";
-        when(request.getHeader(anyString())).thenReturn(bearerToken);
-        when(tokenService.validateToken(token)).thenReturn(true);
-        when(tokenService.getUsernameFromToken(token)).thenReturn(username);
-
-        // Act
-        authTokenFilter.doFilterInternal(request, response, filterChain);
-
-        // Assert: verify that the SecurityContext is properly set.
-        assertNotNull(SecurityContextHolder.getContext().getAuthentication());
-        assertEquals(username, SecurityContextHolder.getContext().getAuthentication().getPrincipal());
-        // Also verify that the filter chain was continued.
-        verify(filterChain, times(1)).doFilter(request, response);
-    }
-
-    @Test
-    void doFilterInternal_ensuresSecurityContextCleanupAfterSuccess() throws ServletException, IOException {
-        // Arrange: simulate a valid token scenario
-        String token = "valid-token";
-        String bearerToken = "Bearer " + token;
-        String username = "user1";
-        when(request.getHeader(anyString())).thenReturn(bearerToken);
-        when(tokenService.validateToken(token)).thenReturn(true);
-        when(tokenService.getUsernameFromToken(token)).thenReturn(username);
-
-        // Clear context before test
-        SecurityContextHolder.clearContext();
-
-        // Act
-        authTokenFilter.doFilterInternal(request, response, filterChain);
-
-        // Assert: check authentication is set correctly
-        assertNotNull(SecurityContextHolder.getContext().getAuthentication());
-
-        // Manually clear context to verify filter would handle this properly in the real scenario
-        SecurityContextHolder.clearContext();
-        assertNull(SecurityContextHolder.getContext().getAuthentication());
-    }
-
-    @Test
-    void shouldNotFilter_optionsRequest_returnsTrue() {
-        // Arrange
-        when(request.getMethod()).thenReturn("OPTIONS");
-
-        // Act
-        boolean result = authTokenFilter.shouldNotFilter(request);
-
-        // Assert
-        assertTrue(result, "OPTIONS requests should be excluded from filtering");
-    }
-
-    @Test
-    void shouldNotFilter_loginEndpoint_returnsTrue() {
-        // Arrange
+    void shouldNotFilter_whenOnLoginPath() {
         when(request.getServletPath()).thenReturn("/login");
+        assertThat(filter.shouldNotFilter(request)).isTrue();
+    }
 
-        // Act
-        boolean result = authTokenFilter.shouldNotFilter(request);
+    @Test
+    void shouldFilter_whenNotOnLoginPath() {
+        when(request.getServletPath()).thenReturn("/api/foo");
+        assertThat(filter.shouldNotFilter(request)).isFalse();
+    }
 
-        // Assert
-        assertTrue(result, "Login endpoint should be excluded from filtering");
+    @Test
+    void doFilterInternal_missingHeader_sendsUnauthorized() throws IOException {
+        when(request.getHeader("Auth-Token")).thenReturn(null);
+
+        filter.doFilterInternal(request, response, chain);
+
+        verify(response).sendError(eq(HttpServletResponse.SC_UNAUTHORIZED), anyString());
+        verifyNoInteractions(chain);
+        assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
+    }
+
+    @Test
+    void doFilterInternal_malformedHeader_sendsUnauthorized() throws IOException {
+        when(request.getHeader("Auth-Token")).thenReturn("bad value");
+
+        filter.doFilterInternal(request, response, chain);
+
+        verify(response).sendError(eq(HttpServletResponse.SC_UNAUTHORIZED), anyString());
+        verifyNoInteractions(chain);
+        assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
+    }
+
+    @Test
+    void doFilterInternal_invalidToken_sendsUnauthorized() throws IOException {
+        String token = "Bearer abc";
+        when(request.getHeader("Auth-Token")).thenReturn(token);
+        when(tokenService.validateToken(token)).thenReturn(false);
+
+        filter.doFilterInternal(request, response, chain);
+
+        verify(response).sendError(eq(HttpServletResponse.SC_UNAUTHORIZED), anyString());
+        verifyNoInteractions(chain);
+        assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
+    }
+
+    @Test
+    void doFilterInternal_exceptionDuringValidation_sendsUnauthorized() throws IOException {
+        String token = "Bearer xyz";
+        when(request.getHeader("Auth-Token")).thenReturn(token);
+        doThrow(new RuntimeException("boom")).when(tokenService).validateToken(token);
+
+        filter.doFilterInternal(request, response, chain);
+
+        verify(response).sendError(eq(HttpServletResponse.SC_UNAUTHORIZED), anyString());
+        verifyNoInteractions(chain);
+        assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
+    }
+
+    @Test
+    void doFilterInternal_validToken_setsAuthenticationAndContinues() throws IOException, ServletException {
+        String token = "good token";
+        String user  = "john";
+        when(request.getHeader("Auth-Token")).thenReturn("Bearer " + token);
+        when(tokenService.validateToken(token)).thenReturn(true);
+        when(tokenService.getUsernameFromToken(token)).thenReturn(user);
+
+        filter.doFilterInternal(request, response, chain);
+
+        // The filter chain must have been continued
+        verify(chain).doFilter(request, response);
+
+        // and SecurityContext must hold a UsernamePasswordAuthenticationToken
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        assertThat(auth)
+                .isInstanceOf(UsernamePasswordAuthenticationToken.class)
+                .satisfies(a -> {
+                    assertThat(a.getPrincipal()).isEqualTo(user);
+                    assertThat(a.getAuthorities()).extracting(GrantedAuthority::getAuthority)
+                            .containsExactly("ROLE_USER");
+                });
     }
 }

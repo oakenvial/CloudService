@@ -117,7 +117,7 @@ class FileServiceTest {
         // Prepare repository responses.
         when(userEntityRepository.findByUsername("testUser")).thenReturn(Optional.of(testUser));
         when(fileEntityRepository.findByUserAndFilenameAndDeletedFalse(testUser, "test.txt"))
-                .thenReturn(Optional.of(testFileEntity));
+                .thenReturn(List.of(testFileEntity));
 
         // Invoke deletion.
         fileService.deleteFile("test.txt", "testUser");
@@ -133,7 +133,7 @@ class FileServiceTest {
         // Prepare mocks for an existing file.
         when(userEntityRepository.findByUsername("testUser")).thenReturn(Optional.of(testUser));
         when(fileEntityRepository.findByUserAndFilenameAndDeletedFalse(testUser, "test.txt"))
-                .thenReturn(Optional.of(testFileEntity));
+                .thenReturn(List.of(testFileEntity));
 
         FilenameUpdateRequestDto updateDto = new FilenameUpdateRequestDto("newName.txt");
 
@@ -151,7 +151,7 @@ class FileServiceTest {
         byte[] fileContent = "download content".getBytes();
         when(userEntityRepository.findByUsername("testUser")).thenReturn(Optional.of(testUser));
         when(fileEntityRepository.findByUserAndFilenameAndDeletedFalse(testUser, "test.txt"))
-                .thenReturn(Optional.of(testFileEntity));
+                .thenReturn(List.of(testFileEntity));
         when(storageAdapter.getObject("unique_test.txt"))
                 .thenReturn(new ByteArrayInputStream(fileContent));
 
@@ -168,7 +168,7 @@ class FileServiceTest {
     void getFileHash_fileExists_returnsHash() throws Exception {
         when(userEntityRepository.findByUsername("testUser")).thenReturn(Optional.of(testUser));
         when(fileEntityRepository.findByUserAndFilenameAndDeletedFalse(testUser, "test.txt"))
-                .thenReturn(Optional.of(testFileEntity));
+                .thenReturn(List.of(testFileEntity));
 
         String hash = fileService.getFileHash("test.txt", "testUser");
         assertEquals("hash123", hash);
