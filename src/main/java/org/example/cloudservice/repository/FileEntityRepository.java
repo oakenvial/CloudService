@@ -10,7 +10,7 @@ import java.util.Optional;
 
 public interface FileEntityRepository extends JpaRepository<FileEntity, Integer> {
 
-    Optional<FileEntity> findByUserAndFilenameAndDeletedFalse(UserEntity user, String filename);
+    List<FileEntity> findByUserAndFilenameAndDeletedFalse(UserEntity user, String filename);
 
     List<FileEntity> findAllByUserAndDeletedFalse(UserEntity userEntity, Pageable pageable);
 }

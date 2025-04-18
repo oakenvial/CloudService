@@ -59,7 +59,7 @@ public class FileService {
             throw new StorageException("Error uploading file to storage", e);
         }
 
-        // Lookup the user and build FileEntity metadata.
+        // Look up the user and build FileEntity metadata.
         UserEntity userEntity = userEntityRepository.findByUsername(username)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found with username: " + username));
 
@@ -79,23 +79,27 @@ public class FileService {
     }
 
     public void deleteFile(String filename, String username) throws FileNotFoundException {
-        FileEntity fileEntity = getFileEntity(filename, username);
-        fileEntity.setDeleted(true);
-        fileEntity.setDeletedAt(Instant.now());
-        fileEntityRepository.save(fileEntity);
-        logger.info("File {} deleted successfully for user {}.", filename, username);
+        List<FileEntity> fileEntities = getFileEntities(filename, username);
+        for (FileEntity fileEntity : fileEntities) {
+            fileEntity.setDeleted(true);
+            fileEntity.setDeletedAt(Instant.now());
+            fileEntityRepository.save(fileEntity);
+        }
+        logger.info("File(s) {} deleted successfully for user {}.", filename, username);
     }
 
     public void updateFilename(String filename, FilenameUpdateRequestDto filenameUpdateRequestDto, String username) throws FileNotFoundException {
-        FileEntity fileEntity = getFileEntity(filename, username);
-        String newFilename = filenameUpdateRequestDto.getName();
-        fileEntity.setFilename(newFilename);
-        fileEntityRepository.save(fileEntity);
+        List<FileEntity> fileEntities = getFileEntities(filename, username);
+        String newFilename = filenameUpdateRequestDto.getFilename();
+        for (FileEntity fileEntity : fileEntities) {
+            fileEntity.setFilename(newFilename);
+            fileEntityRepository.save(fileEntity);
+        }
         logger.info("Filename {} updated to {} successfully for user {}.", filename, newFilename, username);
     }
 
     public File getFile(String filename, String username) throws FileNotFoundException {
-        FileEntity fileEntity = getFileEntity(filename, username);
+        FileEntity fileEntity = getFileEntities(filename, username).getFirst();
         File tempFile;
         // Attempt to download the file and copy it to a temporary file.
         try (InputStream inputStream = storageAdapter.getObject(fileEntity.getS3Link())) {
@@ -110,7 +114,7 @@ public class FileService {
     }
 
     public String getFileHash(String filename, String username) throws FileNotFoundException {
-        FileEntity fileEntity = getFileEntity(filename, username);
+        FileEntity fileEntity = getFileEntities(filename, username).getFirst();
         return fileEntity.getHash();
     }
 
@@ -129,12 +133,14 @@ public class FileService {
         return fileDtos;
     }
 
-    private FileEntity getFileEntity(String filename, String username) throws FileNotFoundException {
+    private List<FileEntity> getFileEntities(String filename, String username) throws FileNotFoundException {
         UserEntity userEntity = userEntityRepository.findByUsername(username)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found with username: " + username));
-        FileEntity fileEntity = fileEntityRepository.findByUserAndFilenameAndDeletedFalse(userEntity, filename)
-                .orElseThrow(() -> new FileNotFoundException("File not found: " + filename));
-        logger.info("File {} located in the repository", filename);
-        return fileEntity;
+        List<FileEntity> fileEntityList = fileEntityRepository.findByUserAndFilenameAndDeletedFalse(userEntity, filename);
+        if (fileEntityList.isEmpty()) {
+            throw new FileNotFoundException("File not found: " + filename);
+        }
+        logger.info("Total {} files of {} name located in the repository", fileEntityList.size(), filename);
+        return fileEntityList;
     }
 }

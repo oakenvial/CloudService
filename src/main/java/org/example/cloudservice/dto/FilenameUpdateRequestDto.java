@@ -12,5 +12,5 @@ import lombok.*;
 public class FilenameUpdateRequestDto {
 
     @NotBlank(message = "Filename must not be blank")
-    private String name;
+    private String filename;
 }
